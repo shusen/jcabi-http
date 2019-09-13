@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2011-2015, jcabi.com
+ * Copyright (c) 2011-2017, jcabi.com
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -37,14 +37,11 @@ import com.jcabi.http.Wire;
 import com.jcabi.log.Logger;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.UnsupportedEncodingException;
 import java.net.URI;
-import java.net.URLEncoder;
 import java.nio.charset.Charset;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.Map;
-import javax.validation.constraints.NotNull;
 import javax.ws.rs.core.HttpHeaders;
 import javax.xml.bind.DatatypeConverter;
 import lombok.EqualsAndHashCode;
@@ -72,7 +69,7 @@ import lombok.ToString;
  * @see <a href="http://tools.ietf.org/html/rfc2617">RFC 2617 "HTTP Authentication: Basic and Digest Access Authentication"</a>
  */
 @Immutable
-@ToString
+@ToString(of = "origin")
 @EqualsAndHashCode(of = "origin")
 public final class BasicAuthWire implements Wire {
 
@@ -96,8 +93,7 @@ public final class BasicAuthWire implements Wire {
      * Public ctor.
      * @param wire Original wire
      */
-    public BasicAuthWire(@NotNull(message = "wire can't be NULL")
-        final Wire wire) {
+    public BasicAuthWire(final Wire wire) {
         this.origin = wire;
     }
 
@@ -106,7 +102,9 @@ public final class BasicAuthWire implements Wire {
     public Response send(final Request req, final String home,
         final String method,
         final Collection<Map.Entry<String, String>> headers,
-        final InputStream content) throws IOException {
+        final InputStream content,
+        final int connect,
+        final int read) throws IOException {
         final Collection<Map.Entry<String, String>> hdrs =
             new LinkedList<Map.Entry<String, String>>();
         boolean absent = true;
@@ -119,30 +117,24 @@ public final class BasicAuthWire implements Wire {
         final String info = URI.create(home).getUserInfo();
         if (absent && info != null) {
             final String[] parts = info.split(":", 2);
-            try {
-                hdrs.add(
-                    new ImmutableHeader(
-                        HttpHeaders.AUTHORIZATION,
-                        Logger.format(
-                            "Basic %s",
-                            DatatypeConverter.printBase64Binary(
-                                Logger.format(
-                                    "%s:%s",
-                                    URLEncoder.encode(
-                                        parts[0], BasicAuthWire.ENCODING
-                                    ),
-                                    URLEncoder.encode(
-                                        parts[1], BasicAuthWire.ENCODING
-                                    )
-                                ).getBytes(BasicAuthWire.CHARSET)
-                            )
+            hdrs.add(
+                new ImmutableHeader(
+                    HttpHeaders.AUTHORIZATION,
+                    Logger.format(
+                        "Basic %s",
+                        DatatypeConverter.printBase64Binary(
+                            Logger.format(
+                                "%s:%s",
+                                parts[0],
+                                parts[1]
+                            ).getBytes(BasicAuthWire.CHARSET)
                         )
                     )
-                );
-            } catch (final UnsupportedEncodingException ex) {
-                throw new IllegalStateException(ex);
-            }
+                )
+            );
         }
-        return this.origin.send(req, home, method, hdrs, content);
+        return this.origin.send(
+            req, home, method, hdrs, content, connect, read
+        );
     }
 }

@@ -22,8 +22,8 @@ Optional Dependencies
 +--
 <dependency>
   <groupId>com.sun.jersey</groupId>
-  <artifactId>jersey-core</artifactId>
-  <version>1.18.1</version>
+  <artifactId>jersey-client</artifactId>
+  <version>1.19</version>
 </dependency>
 +--
 
@@ -43,6 +43,22 @@ Optional Dependencies
   <groupId>org.glassfish</groupId>
   <artifactId>javax.json</artifactId>
   <version>1.0.4</version>
+</dependency>
++--
+
+  If you prefer to use the Jackson Project ({{{./apidocs-${project.version}/com/jcabi/http/response/JacksonResponse.html}<<<JacksonResponse>>>}})
+  as the JSON processor you'll have to include the following dependencies instead:
+
++--
+<dependency>
+  <groupId>com.fasterxml.jackson.core</groupId>
+    <artifactId>jackson-core</artifactId>
+    <version>2.7.6</version>
+</dependency>
+<dependency>
+  <groupId>com.fasterxml.jackson.core</groupId>
+    <artifactId>jackson-databind</artifactId>
+    <version>2.7.6</version>
 </dependency>
 +--
 

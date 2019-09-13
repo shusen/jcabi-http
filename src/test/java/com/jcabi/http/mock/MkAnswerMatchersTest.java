@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2011-2015, jcabi.com
+ * Copyright (c) 2011-2017, jcabi.com
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -55,6 +55,22 @@ public final class MkAnswerMatchersTest {
             MkAnswerMatchers.hasBody(
                 Matchers.is(body)
             )
+        );
+    }
+
+    /**
+     * MkAnswerMatchers can match MkAnswer body bytes.
+     */
+    @Test
+    public void canMatchBodyBytes() {
+        final byte[] body = {0x01, 0x45, 0x21};
+        final MkAnswer query = Mockito.mock(MkAnswer.class);
+        Mockito.doReturn(body).when(query).bodyBytes();
+        MatcherAssert.assertThat(
+                query,
+                MkAnswerMatchers.hasBodyBytes(
+                        Matchers.is(body)
+                )
         );
     }
 

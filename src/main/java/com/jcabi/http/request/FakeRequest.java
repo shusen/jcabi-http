@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2011-2015, jcabi.com
+ * Copyright (c) 2011-2017, jcabi.com
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -45,7 +45,6 @@ import java.nio.charset.Charset;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
-import javax.validation.constraints.NotNull;
 import lombok.EqualsAndHashCode;
 
 /**
@@ -79,24 +78,7 @@ public final class FakeRequest implements Request {
      * Base request.
      * @checkstyle ParameterNumber (15 lines)
      */
-    private final transient Request base = new BaseRequest(
-        new Wire() {
-            @Override
-            public Response send(final Request req, final String home,
-                final String method,
-                final Collection<Map.Entry<String, String>> headers,
-                final InputStream text) throws IOException {
-                return new DefaultResponse(
-                    req,
-                    FakeRequest.this.code,
-                    FakeRequest.this.phrase,
-                    FakeRequest.this.hdrs,
-                    FakeRequest.this.content
-                );
-            }
-        },
-        "http://localhost:12345/see-FakeRequest-class"
-    );
+    private final transient Request base;
 
     /**
      * Status code.
@@ -139,15 +121,34 @@ public final class FakeRequest implements Request {
      * @param body HTTP body
      * @checkstyle ParameterNumber (10 lines)
      */
-    public FakeRequest(final int status,
-        @NotNull(message = "HTTP reason can't be NULL") final String reason,
-        @NotNull(message = "list of headers can't be NULL")
+    public FakeRequest(final int status, final String reason,
         final Collection<Map.Entry<String, String>> headers,
-        @NotNull(message = "body can't be NULL") final byte[] body) {
+        final byte[] body) {
         this.code = status;
         this.phrase = reason;
-        this.hdrs = new Array<Map.Entry<String, String>>(headers);
+        this.hdrs = new Array<>(headers);
         this.content = body.clone();
+        this.base = new BaseRequest(
+            new Wire() {
+                @Override
+                // @checkstyle ParameterNumber (6 lines)
+                public Response send(final Request req, final String home,
+                    final String method,
+                    final Collection<Map.Entry<String, String>> headers,
+                    final InputStream text,
+                    final int connect,
+                    final int read) {
+                    return new DefaultResponse(
+                        req,
+                        FakeRequest.this.code,
+                        FakeRequest.this.phrase,
+                        FakeRequest.this.hdrs,
+                        FakeRequest.this.content
+                    );
+                }
+            },
+            "http://localhost:12345/see-FakeRequest-class"
+        );
     }
 
     @Override
@@ -156,21 +157,17 @@ public final class FakeRequest implements Request {
     }
 
     @Override
-    @NotNull
     public RequestURI uri() {
         return this.base.uri();
     }
 
     @Override
-    public Request header(
-        @NotNull(message = "header name can't be NULL") final String name,
-        @NotNull(message = "header value can't be NULL") final Object value) {
+    public Request header(final String name, final Object value) {
         return this.base.header(name, value);
     }
 
     @Override
-    public Request reset(
-        @NotNull(message = "header name can't be NULL") final String name) {
+    public Request reset(final String name) {
         return this.base.reset(name);
     }
 
@@ -180,9 +177,18 @@ public final class FakeRequest implements Request {
     }
 
     @Override
-    public Request method(
-        @NotNull(message = "method can't be NULL") final String method) {
+    public RequestBody multipartBody() {
+        return this.base.multipartBody();
+    }
+
+    @Override
+    public Request method(final String method) {
         return this.base.method(method);
+    }
+
+    @Override
+    public Request timeout(final int connect, final int read) {
+        return this.base.timeout(connect, read);
     }
 
     @Override

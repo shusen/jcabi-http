@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2011-2015, jcabi.com
+ * Copyright (c) 2011-2017, jcabi.com
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -41,7 +41,6 @@ import java.util.LinkedList;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import javax.validation.constraints.NotNull;
 import javax.ws.rs.core.HttpHeaders;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -74,7 +73,7 @@ import lombok.ToString;
  * @see <a href="http://tools.ietf.org/html/rfc2965">RFC 2965 "HTTP State Management Mechanism"</a>
  */
 @Immutable
-@ToString
+@ToString(of = "origin")
 @EqualsAndHashCode(of = "origin")
 public final class CookieOptimizingWire implements Wire {
 
@@ -87,8 +86,7 @@ public final class CookieOptimizingWire implements Wire {
      * Public ctor.
      * @param wire Original wire
      */
-    public CookieOptimizingWire(@NotNull(message = "wire can't be NULL")
-        final Wire wire) {
+    public CookieOptimizingWire(final Wire wire) {
         this.origin = wire;
     }
 
@@ -97,7 +95,9 @@ public final class CookieOptimizingWire implements Wire {
     public Response send(final Request req, final String home,
         final String method,
         final Collection<Map.Entry<String, String>> headers,
-        final InputStream content) throws IOException {
+        final InputStream content,
+        final int connect,
+        final int read) throws IOException {
         final Collection<Map.Entry<String, String>> hdrs =
             new LinkedList<Map.Entry<String, String>>();
         final ConcurrentMap<String, String> cookies =
@@ -137,6 +137,8 @@ public final class CookieOptimizingWire implements Wire {
                 )
             );
         }
-        return this.origin.send(req, home, method, hdrs, content);
+        return this.origin.send(
+            req, home, method, hdrs, content, connect, read
+        );
     }
 }

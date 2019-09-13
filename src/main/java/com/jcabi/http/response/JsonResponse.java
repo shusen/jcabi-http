@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2011-2015, jcabi.com
+ * Copyright (c) 2011-2017, jcabi.com
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,6 +32,7 @@ package com.jcabi.http.response;
 import com.jcabi.aspects.Immutable;
 import com.jcabi.http.Response;
 import java.io.StringReader;
+import java.io.UnsupportedEncodingException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.json.Json;
@@ -40,7 +41,6 @@ import javax.json.JsonObject;
 import javax.json.JsonReader;
 import javax.json.JsonStructure;
 import javax.json.stream.JsonParsingException;
-import javax.validation.constraints.NotNull;
 import lombok.EqualsAndHashCode;
 
 /**
@@ -78,8 +78,7 @@ public final class JsonResponse extends AbstractResponse {
      * Public ctor.
      * @param resp Response
      */
-    public JsonResponse(@NotNull(message = "response can't be NULL")
-        final Response resp) {
+    public JsonResponse(final Response resp) {
         super(resp);
     }
 
@@ -89,10 +88,7 @@ public final class JsonResponse extends AbstractResponse {
      * @param element Element in the JSON data of this object
      * @return This object
      */
-    @NotNull(message = "JSON response is never NULL")
-    public JsonResponse assertJson(
-        @NotNull(message = "JSON query can't be NULL")
-        final String element) {
+    public JsonResponse assertJson(final String element) {
         throw new UnsupportedOperationException(
             // @checkstyle LineLength (1 line)
             "assertJson() is not implemented yet, since we are not sure which JSON query standard to use"
@@ -103,12 +99,21 @@ public final class JsonResponse extends AbstractResponse {
      * Read body as JSON.
      * @return Json reader
      */
-    @NotNull(message = "JSON reader is never NULL")
     public JsonReader json() {
-        final String body = this.body();
+        final byte[] body = this.binary();
+        final String json;
+        try {
+            json = new String(body, "UTF-8");
+        } catch (final UnsupportedEncodingException ex) {
+            throw new IllegalStateException(ex);
+        }
         return new JsonResponse.VerboseReader(
-            Json.createReader(new StringReader(JsonResponse.escape(body))),
-            body
+            Json.createReader(
+                new StringReader(
+                    JsonResponse.escape(json)
+                )
+            ),
+            json
         );
     }
 

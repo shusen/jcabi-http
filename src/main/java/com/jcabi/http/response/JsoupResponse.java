@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2011-2015, jcabi.com
+ * Copyright (c) 2011-2017, jcabi.com
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,9 +31,10 @@ package com.jcabi.http.response;
 
 import com.jcabi.aspects.Immutable;
 import com.jcabi.http.Response;
-import javax.validation.constraints.NotNull;
 import lombok.EqualsAndHashCode;
 import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Entities;
 
 /**
  * Jsoup response.
@@ -53,7 +54,7 @@ import org.jsoup.Jsoup;
  *  <li>Unclosed tags will be closed ("&lt;p&gt;Hello" will become
  *      "&lt;p&gt;Hello&lt;/p&gt;")
  *  <li>Implicit tags will be made explicit (e.g. a naked &lt;td&gt; will be
- *      wrapped in a &lt;table&gt;&lt;trgt;&lt;td&gt;?)
+ *      wrapped in a &lt;table&gt;&lt;tr&gt;&lt;td&gt;)
  *  <li>Basic structure is guaranteed (i.e. html, head, body elements)
  * </ul>
  *
@@ -72,14 +73,16 @@ public final class JsoupResponse extends AbstractResponse {
      * Public ctor.
      * @param resp Response
      */
-    public JsoupResponse(@NotNull(message = "response can't be NULL")
-        final Response resp) {
+    public JsoupResponse(final Response resp) {
         super(resp);
     }
 
     @Override
     public String body() {
-        return Jsoup.parse(super.body()).html();
+        final Document html = Jsoup.parse(super.body());
+        html.outputSettings().syntax(Document.OutputSettings.Syntax.xml);
+        html.outputSettings().escapeMode(Entities.EscapeMode.xhtml);
+        return html.html();
     }
 
 }

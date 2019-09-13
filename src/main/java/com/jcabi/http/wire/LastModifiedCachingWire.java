@@ -1,7 +1,5 @@
-<?xml version="1.0"?>
-<!--
- *
- * Copyright (c) 2011-2015, jcabi.com
+/**
+ * Copyright (c) 2011-2017, jcabi.com
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,9 +26,29 @@
  * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
- -->
-<document xmlns="http://maven.apache.org/changes/1.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/changes/1.0.0 http://maven.apache.org/xsd/changes-1.0.0.xsd">
-    <body>
-        <release version="0.1" date="4 Oct 2013" description="first version"/>
-    </body>
-</document>
+ */
+package com.jcabi.http.wire;
+
+import com.jcabi.http.Wire;
+import javax.ws.rs.core.HttpHeaders;
+import lombok.ToString;
+
+/**
+ * Wire that caches requests based on Last-Modified
+ * and If-Modified-Since headers.
+ * @author Igor Piddubnyi (igor.piddubnyi@gmail.com)
+ * @version $Id$
+ * @since 1.15
+ */
+@ToString
+public final class LastModifiedCachingWire
+    extends AbstractHeaderBasedCachingWire {
+
+    /**
+     * Public ctor.
+     * @param origin Original wire
+     */
+    public LastModifiedCachingWire(final Wire origin) {
+        super(HttpHeaders.LAST_MODIFIED, HttpHeaders.IF_MODIFIED_SINCE, origin);
+    }
+}

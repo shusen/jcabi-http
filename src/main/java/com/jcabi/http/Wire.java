@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2011-2015, jcabi.com
+ * Copyright (c) 2011-2017, jcabi.com
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -66,12 +66,15 @@ public interface Wire {
      * @param method HTTP method
      * @param headers Headers
      * @param content HTTP body
+     * @param connect The connect timeout
+     * @param read The read timeout
      * @return Response obtained
      * @throws IOException if fails
      * @checkstyle ParameterNumber (6 lines)
      */
     Response send(Request req, String home, String method,
-        Collection<Map.Entry<String, String>> headers, InputStream content)
+        Collection<Map.Entry<String, String>> headers, InputStream content,
+        int connect, int read)
         throws IOException;
 
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2011-2015, jcabi.com
+ * Copyright (c) 2011-2017, jcabi.com
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -95,10 +95,7 @@ abstract class AbstractResponse implements Response {
         return this.response.binary();
     }
 
-    /**
-     * {@inheritDoc}
-     * @checkstyle MethodName (4 lines)
-     */
+    // @checkstyle MethodName (4 lines)
     @Override
     @SuppressWarnings("PMD.ShortMethodName")
     public final <T extends Response> T as(final Class<T> type) {

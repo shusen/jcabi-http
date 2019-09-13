@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2011-2015, jcabi.com
+ * Copyright (c) 2011-2017, jcabi.com
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -40,7 +40,6 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.util.Collection;
 import java.util.Map;
-import javax.validation.constraints.NotNull;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 
@@ -66,7 +65,7 @@ import lombok.ToString;
  * @since 0.10
  */
 @Immutable
-@ToString
+@ToString(of = "origin")
 @EqualsAndHashCode(of = "origin")
 public final class RetryWire implements Wire {
 
@@ -79,8 +78,7 @@ public final class RetryWire implements Wire {
      * Public ctor.
      * @param wire Original wire
      */
-    public RetryWire(@NotNull(message = "wire can't be NULL")
-        final Wire wire) {
+    public RetryWire(final Wire wire) {
         this.origin = wire;
     }
 
@@ -89,7 +87,8 @@ public final class RetryWire implements Wire {
     public Response send(final Request req, final String home,
         final String method,
         final Collection<Map.Entry<String, String>> headers,
-        final InputStream content) throws IOException {
+        final InputStream content,
+        final int connect, final int read) throws IOException {
         int attempt = 0;
         while (true) {
             if (attempt > Tv.THREE) {
@@ -99,7 +98,8 @@ public final class RetryWire implements Wire {
             }
             try {
                 final Response rsp = this.origin.send(
-                    req, home, method, headers, content
+                    req, home, method, headers, content,
+                    connect, read
                 );
                 if (rsp.status() < HttpURLConnection.HTTP_INTERNAL_ERROR) {
                     return rsp;

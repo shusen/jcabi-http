@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2011-2015, jcabi.com
+ * Copyright (c) 2011-2017, jcabi.com
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -43,13 +43,11 @@ import java.net.URI;
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import javax.validation.constraints.NotNull;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 
 /**
- * Wire that caches GET requests (for five minutes).
+ * Wire that caches GET requests.
  *
  * <p>This decorator can be used when you want to avoid duplicate
  * GET requests to load-sensitive resources, for example:
@@ -92,17 +90,15 @@ public final class CachingWire implements Wire {
             @Override
             public LoadingCache<CachingWire.Query, Response> load(
                 final Wire key) {
-                return CacheBuilder.newBuilder()
-                    .expireAfterAccess((long) Tv.FIVE, TimeUnit.MINUTES)
-                    .build(
-                        new CacheLoader<CachingWire.Query, Response>() {
-                            @Override
-                            public Response load(final CachingWire.Query query)
-                                throws IOException {
-                                return query.fetch();
-                            }
+                return CacheBuilder.newBuilder().build(
+                    new CacheLoader<CachingWire.Query, Response>() {
+                        @Override
+                        public Response load(final CachingWire.Query query)
+                            throws IOException {
+                            return query.fetch();
                         }
-                    );
+                    }
+                );
             }
         };
 
@@ -127,8 +123,7 @@ public final class CachingWire implements Wire {
      * Public ctor.
      * @param wire Original wire
      */
-    public CachingWire(@NotNull(message = "wire can't be NULL")
-        final Wire wire) {
+    public CachingWire(final Wire wire) {
         this(wire, "$never");
     }
 
@@ -138,9 +133,7 @@ public final class CachingWire implements Wire {
      * @param flsh Flushing regular expression
      * @since 1.5
      */
-    public CachingWire(
-        @NotNull(message = "wire can't be NULL") final Wire wire,
-        @NotNull(message = "regular expression is NULL") final String flsh) {
+    public CachingWire(final Wire wire, final String flsh) {
         this.origin = wire;
         this.regex = flsh;
     }
@@ -150,7 +143,9 @@ public final class CachingWire implements Wire {
     public Response send(final Request req, final String home,
         final String method,
         final Collection<Map.Entry<String, String>> headers,
-        final InputStream content) throws IOException {
+        final InputStream content,
+        final int connect,
+        final int read) throws IOException {
         final URI uri = req.uri().get();
         final StringBuilder label = new StringBuilder(Tv.HUNDRED)
             .append(method).append(' ').append(uri.getPath());
@@ -169,16 +164,28 @@ public final class CachingWire implements Wire {
             try {
                 rsp = CachingWire.CACHE.get(this).get(
                     new CachingWire.Query(
-                        this.origin, req, home, headers, content
+                        this.origin, req, home, headers, content,
+                        connect, read
                     )
                 );
             } catch (final ExecutionException ex) {
                 throw new IOException(ex);
             }
         } else {
-            rsp = this.origin.send(req, home, method, headers, content);
+            rsp = this.origin.send(
+                req, home, method, headers, content,
+                connect, read
+            );
         }
         return rsp;
+    }
+
+    /**
+     * Invalidate the entire cache.
+     * @since 1.15
+     */
+    public static void invalidate() {
+        CachingWire.CACHE.invalidateAll();
     }
 
     /**
@@ -208,22 +215,36 @@ public final class CachingWire implements Wire {
          */
         private final transient InputStream body;
         /**
+         * Connect timeout.
+         */
+        private final transient int connect;
+        /**
+         * Read timeout.
+         */
+        private final transient int read;
+
+        /**
          * Ctor.
          * @param wire Original wire
          * @param req Request
          * @param home URI to fetch
          * @param hdrs Headers
          * @param input Input body
+         * @param cnct Connect timeout
+         * @param rdd Read timeout
          * @checkstyle ParameterNumberCheck (5 lines)
          */
         Query(final Wire wire, final Request req, final String home,
             final Collection<Map.Entry<String, String>> hdrs,
-            final InputStream input) {
+            final InputStream input, final int cnct,
+            final int rdd) {
             this.origin = wire;
             this.request = req;
             this.uri = home;
             this.headers = hdrs;
             this.body = input;
+            this.connect = cnct;
+            this.read = rdd;
         }
         /**
          * Fetch.
@@ -232,7 +253,8 @@ public final class CachingWire implements Wire {
          */
         public Response fetch() throws IOException {
             return this.origin.send(
-                this.request, this.uri, Request.GET, this.headers, this.body
+                this.request, this.uri, Request.GET, this.headers, this.body,
+                this.connect, this.read
             );
         }
     }

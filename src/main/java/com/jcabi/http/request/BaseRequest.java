@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2011-2015, jcabi.com
+ * Copyright (c) 2011-2017, jcabi.com
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -54,7 +54,6 @@ import java.util.LinkedList;
 import java.util.Map;
 import javax.json.Json;
 import javax.json.JsonStructure;
-import javax.validation.constraints.NotNull;
 import javax.ws.rs.core.UriBuilder;
 import lombok.EqualsAndHashCode;
 
@@ -67,12 +66,20 @@ import lombok.EqualsAndHashCode;
  * @checkstyle ClassDataAbstractionCoupling (500 lines)
  * @see Request
  * @see Response
+ * @todo #87:30min Refactor this class to get rid of PMD.GodClass.
+ *  This can be done if MultiPartFormBody and
+ *  FormEncodedBody are pulled out. Also, the two
+ *  share the same implementations for all methods besides formParam,
+ *  so they can be refactored to extend an AbstractRequestBody.
+ *  PMD.TooManyMethods might come together with getting rid of the
+ *  first one, since maybe qulice is counting the methods in the inner
+ *  classes too - if it doesn't, then it can be left.
  */
 @Immutable
 @EqualsAndHashCode(of = { "home", "mtd", "hdrs", "content" })
 @Loggable(Loggable.DEBUG)
-@SuppressWarnings("PMD.TooManyMethods")
-final class BaseRequest implements Request {
+@SuppressWarnings({"PMD.TooManyMethods", "PMD.GodClass"})
+public final class BaseRequest implements Request {
 
     /**
      * The encoding to use.
@@ -107,6 +114,16 @@ final class BaseRequest implements Request {
     private final transient String mtd;
 
     /**
+     * Socket timeout to use.
+     */
+    private final transient int connect;
+
+    /**
+     * Read timeout to use.
+     */
+    private final transient int read;
+
+    /**
      * Headers.
      */
     private final transient Array<Map.Entry<String, String>> hdrs;
@@ -122,7 +139,7 @@ final class BaseRequest implements Request {
      * @param wre Wire
      * @param uri The resource to work with
      */
-    BaseRequest(final Wire wre, final String uri) {
+    public BaseRequest(final Wire wre, final String uri) {
         this(
             wre, uri,
             new Array<Map.Entry<String, String>>(),
@@ -139,44 +156,62 @@ final class BaseRequest implements Request {
      * @param body HTTP request body
      * @checkstyle ParameterNumber (5 lines)
      */
-    BaseRequest(final Wire wre, final String uri,
+    public BaseRequest(final Wire wre, final String uri,
         final Iterable<Map.Entry<String, String>> headers,
         final String method, final byte[] body) {
+        this(wre, uri, headers, method, body, 0, 0);
+    }
+
+    /**
+     * Public ctor.
+     * @param wre Wire
+     * @param uri The resource to work with
+     * @param headers Headers
+     * @param method HTTP method
+     * @param body HTTP request body
+     * @param cnct Connect timeout for http connection
+     * @param rdd Read timeout for http connection
+     * @checkstyle ParameterNumber (5 lines)
+     */
+    public BaseRequest(final Wire wre, final String uri,
+        final Iterable<Map.Entry<String, String>> headers,
+        final String method, final byte[] body,
+        final int cnct, final int rdd) {
         this.wire = wre;
         URI addr = URI.create(uri);
-        if (addr.getPath().isEmpty()) {
+        if (addr.getPath() != null && addr.getPath().isEmpty()) {
             addr = UriBuilder.fromUri(addr).path("/").build();
         }
         this.home = addr.toString();
         this.hdrs = new Array<Map.Entry<String, String>>(headers);
         this.mtd = method;
         this.content = body.clone();
+        this.connect = cnct;
+        this.read = rdd;
     }
 
     @Override
-    @NotNull
     public RequestURI uri() {
         return new BaseRequest.BaseURI(this, this.home);
     }
 
     @Override
-    public Request header(
-        @NotNull(message = "header name can't be NULL") final String name,
-        @NotNull(message = "header value can't be NULL") final Object value) {
+    public Request header(final String name, final Object value) {
         return new BaseRequest(
             this.wire,
             this.home,
             this.hdrs.with(new ImmutableHeader(name, value.toString())),
             this.mtd,
-            this.content
+            this.content,
+            this.connect,
+            this.read
         );
     }
 
     @Override
-    public Request reset(
-        @NotNull(message = "header name can't be NULL") final String name) {
+    public Request reset(final String name) {
         final Collection<Map.Entry<String, String>> headers =
-            new LinkedList<Map.Entry<String, String>>();
+            new LinkedList<>();
         final String key = ImmutableHeader.normalize(name);
         for (final Map.Entry<String, String> header : this.hdrs) {
             if (!header.getKey().equals(key)) {
@@ -188,24 +223,45 @@ final class BaseRequest implements Request {
             this.home,
             headers,
             this.mtd,
-            this.content
+            this.content,
+            this.connect,
+            this.read
         );
     }
 
     @Override
     public RequestBody body() {
-        return new BaseRequest.BaseBody(this, this.content);
+        return new BaseRequest.FormEncodedBody(this, this.content);
     }
 
     @Override
-    public Request method(
-        @NotNull(message = "method can't be NULL") final String method) {
+    public RequestBody multipartBody() {
+        return new BaseRequest.MultipartFormBody(this, this.content);
+    }
+
+    @Override
+    public Request method(final String method) {
         return new BaseRequest(
             this.wire,
             this.home,
             this.hdrs,
             method,
-            this.content
+            this.content,
+            this.connect,
+            this.read
+        );
+    }
+
+    @Override
+    public Request timeout(final int cnct, final int rdd) {
+        return new BaseRequest(
+            this.wire,
+            this.home,
+            this.hdrs,
+            this.mtd,
+            this.content,
+            cnct,
+            rdd
         );
     }
 
@@ -248,11 +304,8 @@ final class BaseRequest implements Request {
         final Wire decorated;
         try {
             decorated = Wire.class.cast(ctor.newInstance(params));
-        } catch (final InstantiationException ex) {
-            throw new IllegalStateException(ex);
-        } catch (final IllegalAccessException ex) {
-            throw new IllegalStateException(ex);
-        } catch (final InvocationTargetException ex) {
+        } catch (final InstantiationException
+            | IllegalAccessException | InvocationTargetException ex) {
             throw new IllegalStateException(ex);
         }
         return new BaseRequest(
@@ -260,11 +313,14 @@ final class BaseRequest implements Request {
             this.home,
             this.hdrs,
             this.mtd,
-            this.content
+            this.content,
+            this.connect,
+            this.read
         );
     }
 
     @Override
+    @SuppressWarnings("PMD.ConsecutiveLiteralAppends")
     public String toString() {
         final URI uri = URI.create(this.home);
         final StringBuilder text = new StringBuilder("HTTP/1.1 ")
@@ -298,7 +354,8 @@ final class BaseRequest implements Request {
         final long start = System.currentTimeMillis();
         final Response response = this.wire.send(
             this, this.home, this.mtd,
-            this.hdrs, stream
+            this.hdrs, stream, this.connect,
+            this.read
         );
         final URI uri = URI.create(this.home);
         Logger.info(
@@ -359,14 +416,11 @@ final class BaseRequest implements Request {
             return URI.create(this.owner.home);
         }
         @Override
-        public RequestURI set(@NotNull(message = "URI can't be NULL")
-            final URI uri) {
+        public RequestURI set(final URI uri) {
             return new BaseRequest.BaseURI(this.owner, uri.toString());
         }
         @Override
-        public RequestURI queryParam(
-            @NotNull(message = "param name can't be NULL") final String name,
-            @NotNull(message = "value can't be NULL") final Object value) {
+        public RequestURI queryParam(final String name, final Object value) {
             return new BaseRequest.BaseURI(
                 this.owner,
                 UriBuilder.fromUri(this.address)
@@ -375,8 +429,7 @@ final class BaseRequest implements Request {
             );
         }
         @Override
-        public RequestURI queryParams(@NotNull(message = "map can't be NULL")
-            final Map<String, String> map) {
+        public RequestURI queryParams(final Map<String, String> map) {
             final UriBuilder uri = UriBuilder.fromUri(this.address);
             final Object[] values = new Object[map.size()];
             int idx = 0;
@@ -391,8 +444,7 @@ final class BaseRequest implements Request {
             );
         }
         @Override
-        public RequestURI path(
-            @NotNull(message = "path can't be NULL") final String segment) {
+        public RequestURI path(final String segment) {
             return new BaseRequest.BaseURI(
                 this.owner,
                 UriBuilder.fromUri(this.address)
@@ -401,8 +453,7 @@ final class BaseRequest implements Request {
             );
         }
         @Override
-        public RequestURI userInfo(
-            @NotNull(message = "info can't be NULL") final String info) {
+        public RequestURI userInfo(final String info) {
             return new BaseRequest.BaseURI(
                 this.owner,
                 UriBuilder.fromUri(this.address)
@@ -421,34 +472,43 @@ final class BaseRequest implements Request {
     }
 
     /**
-     * Base URI.
+     * Body of a request with a form that has attachments.
+     * @todo #87:1h Implement and unit test method formParam(String, Object)
+     *  Details <a href="http://stackoverflow.com/
+     *  questions/8659808/how-does-http-file-upload-work">here</a>
+     *  (second answer). <br> e.g. While FormEncodedBody.formParam adds
+     *  the param to a body with enctype application/x-www-form-urlencoded,
+     *  method MultipartFormBody.formParam should add it to a body with
+     *  enctype multipart/form-data.
      */
-    @Immutable
-    @EqualsAndHashCode(of = "text")
-    @Loggable(Loggable.DEBUG)
-    private static final class BaseBody implements RequestBody {
+    private static final class MultipartFormBody implements RequestBody {
+
         /**
          * Content encapsulated.
          */
         @Immutable.Array
         private final transient byte[] text;
+
         /**
          * Base request encapsulated.
          */
         private final transient BaseRequest owner;
+
         /**
          * Public ctor.
          * @param req Request
          * @param body Text to encapsulate
          */
-        BaseBody(final BaseRequest req, final byte[] body) {
+        MultipartFormBody(final BaseRequest req, final byte[] body) {
             this.owner = req;
             this.text = body.clone();
         }
+
         @Override
         public String toString() {
             return new RequestBody.Printable(this.text).toString();
         }
+
         @Override
         public Request back() {
             return new BaseRequest(
@@ -456,38 +516,144 @@ final class BaseRequest implements Request {
                 this.owner.home,
                 this.owner.hdrs,
                 this.owner.mtd,
-                this.text
+                this.text,
+                this.owner.connect,
+                this.owner.read
             );
         }
+
         @Override
         public String get() {
             return new String(this.text, BaseRequest.CHARSET);
         }
+
         @Override
-        public RequestBody set(@NotNull(message = "content can't be NULL")
-            final String txt) {
+        public RequestBody set(final String txt) {
             return this.set(txt.getBytes(BaseRequest.CHARSET));
         }
+
         @Override
-        public RequestBody set(@NotNull(message = "JSON can't be NULL")
-            final JsonStructure json) {
+        public RequestBody set(final JsonStructure json) {
             final StringWriter writer = new StringWriter();
             Json.createWriter(writer).write(json);
             return this.set(writer.toString());
         }
+
         @Override
-        public RequestBody set(@NotNull(message = "body can't be NULL")
-            final byte[] txt) {
-            return new BaseRequest.BaseBody(this.owner, txt);
+        public RequestBody set(final byte[] txt) {
+            return new BaseRequest.FormEncodedBody(this.owner, txt);
         }
+
         @Override
-        public RequestBody formParam(
-            @NotNull(message = "name can't be NULL") final String name,
-            @NotNull(message = "value can't be NULL") final Object value) {
+        public RequestBody formParam(final String name, final Object value) {
+            throw new UnsupportedOperationException("Method not available");
+        }
+
+        @Override
+        public RequestBody formParams(final Map<String, String> params) {
+            RequestBody body = this;
+            for (final Map.Entry<String, String> param : params.entrySet()) {
+                body = body.formParam(param.getKey(), param.getValue());
+            }
+            return body;
+        }
+    }
+
+    /**
+     * Body of a request with a simple form.
+     * (enctype application/x-www-form-urlencoded)
+     */
+    @Immutable
+    @EqualsAndHashCode(of = "text")
+    @Loggable(Loggable.DEBUG)
+    private static final class FormEncodedBody implements RequestBody {
+
+        /**
+         * Content encapsulated.
+         */
+        @Immutable.Array
+        private final transient byte[] text;
+
+        /**
+         * Base request encapsulated.
+         */
+        private final transient BaseRequest owner;
+
+        /**
+         * URL form character to prepend.
+         */
+        private final transient String prepend;
+
+        /**
+         * Public ctor.
+         * @param req Request
+         * @param body Text to encapsulate
+         */
+        FormEncodedBody(final BaseRequest req, final byte[] body) {
+            this(req, body, "");
+        }
+
+        /**
+         * Public ctor.
+         * @param req Request
+         * @param body Text to encapsulate
+         * @param pre Character to prepend
+         */
+        FormEncodedBody(
+            final BaseRequest req, final byte[] body, final String pre
+        ) {
+            this.owner = req;
+            this.text = body.clone();
+            this.prepend = pre;
+        }
+
+        @Override
+        public String toString() {
+            return new RequestBody.Printable(this.text).toString();
+        }
+
+        @Override
+        public Request back() {
+            return new BaseRequest(
+                this.owner.wire,
+                this.owner.home,
+                this.owner.hdrs,
+                this.owner.mtd,
+                this.text,
+                this.owner.connect,
+                this.owner.read
+            );
+        }
+
+        @Override
+        public String get() {
+            return new String(this.text, BaseRequest.CHARSET);
+        }
+
+        @Override
+        public RequestBody set(final String txt) {
+            return this.set(txt.getBytes(BaseRequest.CHARSET));
+        }
+
+        @Override
+        public RequestBody set(final JsonStructure json) {
+            final StringWriter writer = new StringWriter();
+            Json.createWriter(writer).write(json);
+            return this.set(writer.toString());
+        }
+
+        @Override
+        public RequestBody set(final byte[] txt) {
+            return new BaseRequest.FormEncodedBody(this.owner, txt);
+        }
+
+        @Override
+        public RequestBody formParam(final String name, final Object value) {
             try {
-                return new BaseRequest.BaseBody(
+                return new BaseRequest.FormEncodedBody(
                     this.owner,
                     new StringBuilder(this.get())
+                        .append(this.prepend)
                         .append(name)
                         .append('=')
                         .append(
@@ -496,24 +662,24 @@ final class BaseRequest implements Request {
                                 BaseRequest.ENCODING
                             )
                         )
-                        .append('&')
                         .toString()
-                        .getBytes(BaseRequest.CHARSET)
+                        .getBytes(BaseRequest.CHARSET),
+                    "&"
                 );
             } catch (final UnsupportedEncodingException ex) {
                 throw new IllegalStateException(ex);
             }
         }
+
         @Override
-        public RequestBody formParams(
-            @NotNull(message = "map of params can't be NULL")
-            final Map<String, String> params) {
+        public RequestBody formParams(final Map<String, String> params) {
             RequestBody body = this;
             for (final Map.Entry<String, String> param : params.entrySet()) {
                 body = body.formParam(param.getKey(), param.getValue());
             }
             return body;
         }
+
     }
 
 }

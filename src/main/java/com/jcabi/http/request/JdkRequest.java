@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2011-2015, jcabi.com
+ * Copyright (c) 2011-2017, jcabi.com
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -50,8 +50,8 @@ import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import javax.validation.constraints.NotNull;
 import lombok.EqualsAndHashCode;
+import lombok.ToString;
 
 /**
  * Implementation of {@link Request}, based on JDK.
@@ -70,6 +70,7 @@ import lombok.EqualsAndHashCode;
  */
 @Immutable
 @EqualsAndHashCode(of = "base")
+@ToString(of = "base")
 @Loggable(Loggable.DEBUG)
 @SuppressWarnings("PMD.TooManyMethods")
 public final class JdkRequest implements Request {
@@ -84,7 +85,9 @@ public final class JdkRequest implements Request {
         public Response send(final Request req, final String home,
             final String method,
             final Collection<Map.Entry<String, String>> headers,
-            final InputStream content) throws IOException {
+            final InputStream content,
+            final int connect,
+            final int read) throws IOException {
             final URLConnection raw = new URL(home).openConnection();
             if (!(raw instanceof HttpURLConnection)) {
                 throw new IOException(
@@ -96,6 +99,8 @@ public final class JdkRequest implements Request {
             }
             final HttpURLConnection conn = HttpURLConnection.class.cast(raw);
             try {
+                conn.setConnectTimeout(connect);
+                conn.setReadTimeout(read);
                 conn.setRequestMethod(method);
                 conn.setUseCaches(false);
                 conn.setInstanceFollowRedirects(false);
@@ -162,7 +167,7 @@ public final class JdkRequest implements Request {
                     headers.add(new ImmutableHeader(field.getKey(), value));
                 }
             }
-            return new Array<Map.Entry<String, String>>(headers);
+            return new Array<>(headers);
         }
         /**
          * Get response body of connection.
@@ -208,8 +213,7 @@ public final class JdkRequest implements Request {
      * Public ctor.
      * @param url The resource to work with
      */
-    public JdkRequest(@NotNull(message = "URL can't be NULL")
-        final URL url) {
+    public JdkRequest(final URL url) {
         this(url.toString());
     }
 
@@ -217,8 +221,7 @@ public final class JdkRequest implements Request {
      * Public ctor.
      * @param uri The resource to work with
      */
-    public JdkRequest(@NotNull(message = "URI can't be NULL")
-        final URI uri) {
+    public JdkRequest(final URI uri) {
         this(uri.toString());
     }
 
@@ -226,27 +229,22 @@ public final class JdkRequest implements Request {
      * Public ctor.
      * @param uri The resource to work with
      */
-    public JdkRequest(@NotNull(message = "URI can't be NULL")
-        final String uri) {
+    public JdkRequest(final String uri) {
         this.base = new BaseRequest(JdkRequest.WIRE, uri);
     }
 
     @Override
-    @NotNull
     public RequestURI uri() {
         return this.base.uri();
     }
 
     @Override
-    public Request header(
-        @NotNull(message = "header name can't be NULL") final String name,
-        @NotNull(message = "header value can't be NULL") final Object value) {
+    public Request header(final String name, final Object value) {
         return this.base.header(name, value);
     }
 
     @Override
-    public Request reset(
-        @NotNull(message = "header name can't be NULL") final String name) {
+    public Request reset(final String name) {
         return this.base.reset(name);
     }
 
@@ -256,9 +254,18 @@ public final class JdkRequest implements Request {
     }
 
     @Override
-    public Request method(
-        @NotNull(message = "method can't be NULL") final String method) {
+    public RequestBody multipartBody() {
+        return this.base.multipartBody();
+    }
+
+    @Override
+    public Request method(final String method) {
         return this.base.method(method);
+    }
+
+    @Override
+    public Request timeout(final int connect, final int read) {
+        return this.base.timeout(connect, read);
     }
 
     @Override

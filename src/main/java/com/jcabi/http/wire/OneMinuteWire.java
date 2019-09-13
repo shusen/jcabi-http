@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2011-2015, jcabi.com
+ * Copyright (c) 2011-2017, jcabi.com
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -39,7 +39,6 @@ import java.io.InputStream;
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import javax.validation.constraints.NotNull;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 
@@ -63,7 +62,7 @@ import lombok.ToString;
  * @since 0.10
  */
 @Immutable
-@ToString
+@ToString(of = "origin")
 @EqualsAndHashCode(of = "origin")
 public final class OneMinuteWire implements Wire {
 
@@ -76,8 +75,7 @@ public final class OneMinuteWire implements Wire {
      * Public ctor.
      * @param wire Original wire
      */
-    public OneMinuteWire(@NotNull(message = "wire can't be NULL")
-        final Wire wire) {
+    public OneMinuteWire(final Wire wire) {
         this.origin = wire;
     }
 
@@ -87,7 +85,11 @@ public final class OneMinuteWire implements Wire {
     public Response send(final Request req, final String home,
         final String method,
         final Collection<Map.Entry<String, String>> headers,
-        final InputStream content) throws IOException {
-        return this.origin.send(req, home, method, headers, content);
+        final InputStream content,
+        final int connect,
+        final int read) throws IOException {
+        return this.origin.send(
+            req, home, method, headers, content, connect, read
+        );
     }
 }

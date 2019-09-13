@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2011-2015, jcabi.com
+ * Copyright (c) 2011-2017, jcabi.com
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -45,7 +45,7 @@ public final class MkAnswerMatchers {
     }
 
     /**
-     * Matches the value of {@link MkAnswer#body()} against the given matcher.
+     * Matches the value of the MkAnswer's body against the given matcher.
      *
      * @param matcher The matcher to use.
      * @return Matcher for checking the body of MkAnswer
@@ -55,7 +55,18 @@ public final class MkAnswerMatchers {
     }
 
     /**
-     * Matches the content of {@link MkAnswer#header()} against the given
+     * Matches the value of the MkAnswer's body bytes against the given
+     * matcher.
+     * @param matcher The matcher to use
+     * @return Matcher for checking the body of MkAnswer
+     */
+    public static Matcher<MkAnswer> hasBodyBytes(
+            final Matcher<byte[]> matcher) {
+        return new MkAnswerBodyBytesMatcher(matcher);
+    }
+
+    /**
+     * Matches the content of the MkAnswer's header against the given
      * matcher. Note that for a valid match to occur, the header entry must
      * exist <i>and</i> its value(s) must match the given matcher.
      *

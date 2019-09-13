@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2011-2015, jcabi.com
+ * Copyright (c) 2011-2017, jcabi.com
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -38,6 +38,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.nio.charset.Charset;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.LinkedList;
@@ -128,6 +129,11 @@ final class GrizzlyQuery implements MkQuery {
         return new String(this.content, GrizzlyQuery.CHARSET);
     }
 
+    @Override
+    public byte[] binary() {
+        return Arrays.copyOf(this.content, this.content.length);
+    }
+
     /**
      * Fetch URI from the request.
      * @param request Request
@@ -159,7 +165,7 @@ final class GrizzlyQuery implements MkQuery {
                 GrizzlyQuery.headers(request, name)
             );
         }
-        return new ArrayMap<String, List<String>>(headers);
+        return new ArrayMap<>(headers);
     }
 
     /**

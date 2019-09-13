@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2011-2015, jcabi.com
+ * Copyright (c) 2011-2017, jcabi.com
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -42,7 +42,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import javax.validation.constraints.NotNull;
 import lombok.EqualsAndHashCode;
 
 /**
@@ -53,6 +52,7 @@ import lombok.EqualsAndHashCode;
  * @since 0.10
  */
 @Immutable
+@SuppressWarnings("PMD.TooManyMethods")
 public interface MkAnswer {
 
     /**
@@ -71,8 +71,13 @@ public interface MkAnswer {
      * HTTP response body.
      * @return The body, as a UTF-8 string
      */
-    @NotNull(message = "response body is never NULL")
     String body();
+
+    /**
+     * HTTP response body as bytes.
+     * @return The body, as byte array
+     */
+    byte[] bodyBytes();
 
     /**
      * Simple implementation.
@@ -145,7 +150,7 @@ public interface MkAnswer {
         @SuppressWarnings("PMD.AvoidInstantiatingObjectsInLoops")
         public Map<String, List<String>> headers() {
             final ConcurrentMap<String, List<String>> map =
-                new ConcurrentHashMap<String, List<String>>(0);
+                new ConcurrentHashMap<>(0);
             for (final Map.Entry<String, String> header : this.hdrs) {
                 map.putIfAbsent(header.getKey(), new LinkedList<String>());
                 map.get(header.getKey()).add(header.getValue());
@@ -155,6 +160,10 @@ public interface MkAnswer {
         @Override
         public String body() {
             return new String(this.content, MkAnswer.Simple.CHARSET);
+        }
+        @Override
+        public byte[] bodyBytes() {
+            return this.content.clone();
         }
         @Override
         public String toString() {
@@ -210,6 +219,14 @@ public interface MkAnswer {
                 this.hdrs,
                 body.getBytes(MkAnswer.Simple.CHARSET)
             );
+        }
+        /**
+         * Make a copy of this answer, with another body.
+         * @param body Body
+         * @return New answer
+         */
+        public MkAnswer.Simple withBody(final byte[] body) {
+            return new MkAnswer.Simple(this.code, this.hdrs, body);
         }
     }
 

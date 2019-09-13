@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2011-2015, jcabi.com
+ * Copyright (c) 2011-2017, jcabi.com
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -66,7 +66,7 @@ import lombok.ToString;
  * @since 1.10
  */
 @Immutable
-@ToString
+@ToString(of = "origin")
 @EqualsAndHashCode(of = "origin")
 public final class TrustedWire implements Wire {
 
@@ -108,7 +108,8 @@ public final class TrustedWire implements Wire {
     public Response send(final Request req, final String home,
         final String method,
         final Collection<Map.Entry<String, String>> headers,
-        final InputStream content) throws IOException {
+        final InputStream content,
+        final int connect, final int read) throws IOException {
         synchronized (TrustedWire.class) {
             final SSLSocketFactory def =
                 HttpsURLConnection.getDefaultSSLSocketFactory();
@@ -116,7 +117,10 @@ public final class TrustedWire implements Wire {
                 HttpsURLConnection.setDefaultSSLSocketFactory(
                     TrustedWire.context().getSocketFactory()
                 );
-                return this.origin.send(req, home, method, headers, content);
+                return this.origin.send(
+                    req, home, method, headers, content,
+                    connect, read
+                );
             } finally {
                 HttpsURLConnection.setDefaultSSLSocketFactory(def);
             }

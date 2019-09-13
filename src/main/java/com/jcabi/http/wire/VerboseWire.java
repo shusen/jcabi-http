@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2011-2015, jcabi.com
+ * Copyright (c) 2011-2017, jcabi.com
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -42,7 +42,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collection;
 import java.util.Map;
-import javax.validation.constraints.NotNull;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 
@@ -65,7 +64,7 @@ import lombok.ToString;
  * @since 0.10
  */
 @Immutable
-@ToString
+@ToString(of = "origin")
 @EqualsAndHashCode(of = "origin")
 public final class VerboseWire implements Wire {
 
@@ -78,8 +77,7 @@ public final class VerboseWire implements Wire {
      * Public ctor.
      * @param wire Original wire
      */
-    public VerboseWire(@NotNull(message = "wire can't be NULL")
-        final Wire wire) {
+    public VerboseWire(final Wire wire) {
         this.origin = wire;
     }
 
@@ -88,7 +86,9 @@ public final class VerboseWire implements Wire {
     public Response send(final Request req, final String home,
         final String method,
         final Collection<Map.Entry<String, String>> headers,
-        final InputStream content) throws IOException {
+        final InputStream content,
+        final int connect,
+        final int read) throws IOException {
         final ByteArrayOutputStream output = new ByteArrayOutputStream();
         final byte[] buffer = new byte[Tv.THOUSAND];
         for (int bytes = content.read(buffer); bytes != -1;
@@ -98,7 +98,8 @@ public final class VerboseWire implements Wire {
         output.flush();
         final Response response = this.origin.send(
             req, home, method, headers,
-            new ByteArrayInputStream(output.toByteArray())
+            new ByteArrayInputStream(output.toByteArray()),
+                connect, read
         );
         final StringBuilder text = new StringBuilder(0);
         for (final Map.Entry<String, String> header : headers) {

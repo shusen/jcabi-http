@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2011-2015, jcabi.com
+ * Copyright (c) 2011-2017, jcabi.com
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -45,8 +45,8 @@ import java.net.URL;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.Map;
-import javax.validation.constraints.NotNull;
 import lombok.EqualsAndHashCode;
+import lombok.ToString;
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.config.RequestConfig;
@@ -70,6 +70,7 @@ import org.apache.http.util.EntityUtils;
  */
 @Immutable
 @EqualsAndHashCode(of = "base")
+@ToString(of = "base")
 @Loggable(Loggable.DEBUG)
 @SuppressWarnings("PMD.TooManyMethods")
 public final class ApacheRequest implements Request {
@@ -79,18 +80,20 @@ public final class ApacheRequest implements Request {
      * @checkstyle AnonInnerLength (200 lines)
      */
     private static final Wire WIRE = new Wire() {
-        /**
-         * {@inheritDoc}
-         * @checkstyle ParameterNumber (6 lines)
-         */
+        // @checkstyle ParameterNumber (6 lines)
         @Override
         public Response send(final Request req, final String home,
             final String method,
             final Collection<Map.Entry<String, String>> headers,
-            final InputStream content) throws IOException {
+            final InputStream content,
+            final int connect,
+            final int read) throws IOException {
             final CloseableHttpResponse response =
                 HttpClients.createSystem().execute(
-                    this.httpRequest(home, method, headers, content)
+                    this.httpRequest(
+                        home, method, headers, content,
+                        connect, read
+                    )
                 );
             try {
                 return new DefaultResponse(
@@ -106,6 +109,12 @@ public final class ApacheRequest implements Request {
         }
         /**
          * Create request.
+         * @param home Home URI
+         * @param method Method to use
+         * @param headers HTTP Headers to use
+         * @param content Content to send
+         * @param connect Connect timeout
+         * @param read Read timeout
          * @return Request
          * @throws IOException If an IO Exception occurs
          * @checkstyle ParameterNumber (6 lines)
@@ -113,7 +122,9 @@ public final class ApacheRequest implements Request {
         public HttpEntityEnclosingRequestBase httpRequest(final String home,
             final String method,
             final Collection<Map.Entry<String, String>> headers,
-            final InputStream content) throws IOException {
+            final InputStream content,
+            final int connect,
+            final int read) throws IOException {
             final HttpEntityEnclosingRequestBase req =
                 new HttpEntityEnclosingRequestBase() {
                     @Override
@@ -126,6 +137,8 @@ public final class ApacheRequest implements Request {
                 RequestConfig.custom()
                     .setCircularRedirectsAllowed(false)
                     .setRedirectsEnabled(false)
+                    .setConnectTimeout(connect)
+                    .setSocketTimeout(read)
                     .build()
             );
             req.setURI(uri);
@@ -160,7 +173,7 @@ public final class ApacheRequest implements Request {
         @SuppressWarnings("PMD.AvoidInstantiatingObjectsInLoops")
         private Array<Map.Entry<String, String>> headers(final Header... list) {
             final Collection<Map.Entry<String, String>> headers =
-                new LinkedList<Map.Entry<String, String>>();
+                new LinkedList<>();
             for (final Header header : list) {
                 headers.add(
                     new ImmutableHeader(
@@ -182,8 +195,7 @@ public final class ApacheRequest implements Request {
      * Public ctor.
      * @param url The resource to work with
      */
-    public ApacheRequest(@NotNull(message = "URL can't be NULL")
-        final URL url) {
+    public ApacheRequest(final URL url) {
         this(url.toString());
     }
 
@@ -191,8 +203,7 @@ public final class ApacheRequest implements Request {
      * Public ctor.
      * @param uri The resource to work with
      */
-    public ApacheRequest(@NotNull(message = "URI can't be NULL")
-        final URI uri) {
+    public ApacheRequest(final URI uri) {
         this(uri.toString());
     }
 
@@ -200,27 +211,22 @@ public final class ApacheRequest implements Request {
      * Public ctor.
      * @param uri The resource to work with
      */
-    public ApacheRequest(@NotNull(message = "URI can't be NULL")
-        final String uri) {
+    public ApacheRequest(final String uri) {
         this.base = new BaseRequest(ApacheRequest.WIRE, uri);
     }
 
     @Override
-    @NotNull
     public RequestURI uri() {
         return this.base.uri();
     }
 
     @Override
-    public Request header(
-        @NotNull(message = "header name can't be NULL") final String name,
-        @NotNull(message = "header value can't be NULL") final Object value) {
+    public Request header(final String name, final Object value) {
         return this.base.header(name, value);
     }
 
     @Override
-    public Request reset(
-        @NotNull(message = "header name can't be NULL") final String name) {
+    public Request reset(final String name) {
         return this.base.reset(name);
     }
 
@@ -230,9 +236,18 @@ public final class ApacheRequest implements Request {
     }
 
     @Override
-    public Request method(
-        @NotNull(message = "method can't be NULL") final String method) {
+    public RequestBody multipartBody() {
+        return this.base.multipartBody();
+    }
+
+    @Override
+    public Request method(final String method) {
         return this.base.method(method);
+    }
+
+    @Override
+    public Request timeout(final int connect, final int read) {
+        return this.base.timeout(connect, read);
     }
 
     @Override

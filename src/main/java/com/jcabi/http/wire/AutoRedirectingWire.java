@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2011-2015, jcabi.com
+ * Copyright (c) 2011-2017, jcabi.com
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -71,7 +71,7 @@ import lombok.ToString;
  * @since 1.6
  */
 @Immutable
-@ToString
+@ToString(of = "origin")
 @EqualsAndHashCode(of = { "origin", "max" })
 public final class AutoRedirectingWire implements Wire {
     /**
@@ -107,9 +107,11 @@ public final class AutoRedirectingWire implements Wire {
     public Response send(final Request req, final String home,
         final String method,
         final Collection<Map.Entry<String, String>> headers,
-        final InputStream content) throws IOException {
+        final InputStream content,
+        final int connect,
+        final int read) throws IOException {
         Response response = this.origin.send(
-            req, home, method, headers, content
+            req, home, method, headers, content, connect, read
         );
         int attempt = 1;
         final URI uri = URI.create(home);
@@ -130,7 +132,7 @@ public final class AutoRedirectingWire implements Wire {
             }
             response = this.origin.send(
                 req, location.toString(),
-                method, headers, content
+                method, headers, content, connect, read
             );
             try {
                 TimeUnit.SECONDS.sleep((long) attempt);
